@@ -1,0 +1,17 @@
+{
+  "name": "ex03",
+  "version": "1.0.0",
+  "description": "D3 visualizations for INF358",
+  "main": "index.js",
+  "scripts": {
+    "start": "watchify js/main.js -o js/bundle.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "compile": "browserify js/main.js > js/bundle.js"
+  },
+  "author": "andesyv",
+  "license": "ISC",
+  "dependencies": {
+    "browserify": "^16.5.2",
+    "watchify": "^3.11.1"
+  }
+}
