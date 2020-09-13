@@ -1,28 +1,9 @@
-// let data = [100, 200, 300];
-
-// const body = d3.select("body");
-
-// let paragraphs = body.selectAll("p").data(data).text((d, i) => {
-//     console.log(d);
-//     console.log(i);
-//     console.log(this);
-//     return d;
-// });
-
-// body.selectAll("p").on("mouseover", function(){
-//     d3.select(this).style("background-color", "orange");
-// });
-
-// d3.select("#container").transition().duration(1000).style("background-color", "red").transition().duration(1000).style("background-color", "black");
 const d3 = require('d3');
 
 // Read contents of file into string
 const fs = require('fs');
-var filecontents = fs.readFileSync("2020-09-08--YR-weather-data-Bergen-last-12-years.csv", 'utf8');
+var filecontents = fs.readFileSync("YR-weather-data-Bergen-last-12-years_formatted.csv", 'utf8');
 // Format data string (to ensure valid variable names)
-// let lines = [filecontents.substring(0, filecontents.indexOf('\n')), filecontents.substring(filecontents.indexOf('\n') + 1)];
-// lines[0] = "date,year,month,day,mintmp,maxtmp,avgtmp,normtmp,precip,snow,wind,gust";
-// filecontents = lines.join('\n');
 
 function cleanseVal(val) {
     return (val == "---") ? null : val;
@@ -40,10 +21,15 @@ function convertToDate(str) {
     return new Date(str);
 }
 
+const   valueCount = 10,
+        width = 600,
+        height = 500,
+        margin = 30;
+
 // Parse string into d3 object
 const dsv = require("d3-dsv").dsvFormat(",");
 var dataset = dsv.parse(filecontents, (d, i) => {
-    if (d.date) {
+    if (d.date && i < valueCount) {
         for (let property in d) {
             d[property] = cleanseVal(d[property]);
         }
@@ -65,29 +51,14 @@ var dataset = dsv.parse(filecontents, (d, i) => {
     }
 });
 
-console.log(dataset);
+const canvas = d3.select("body").append("svg").attr("width", 600).attr("height", 500);
 
-// console.log(`Columns: ${dataset.columns}`);
-// for (let i = 0; i < dataset.length && i < 10; i++) {
-//     console.log(`${i}: ${dataset[i].Date}`);
-// }
+let x_scale = d3.scaleBand().domain(dataset.map(d => d.date)).range([margin, 500]);
+let y_scale = d3.scaleLinear().domain([d3.min(dataset, d => d.avgtmp), d3.max(dataset, d => d.avgtmp)]).range([margin, 450]);
 
-// let matrix = [
-//     [1, 2, 3, 4],
-//     [5, 6, 7, 8],
-//     [9, 10, 11, 12],
-//     [13, 14, 15, 16]
-// ];
+let bars = canvas.selectAll(".bar").data(dataset).enter().append("g").attr("transform", (d) => { return `translate(${x_scale(d.date)}, ${y_scale(d.avgtmp)})`; });
+bars.append("rect").attr("x", "0").attr("y", /*`${canvas.attr("height")}`*/"0").attr("width", `${x_scale.bandwidth()}`).attr("height", (d) => { return canvas.attr("height") - y_scale(d.avgtmp) - margin; });
+bars.append("text").attr("x", `${x_scale.bandwidth() * 0.133}`).attr("y", "-.35em").text((d) => { return d.avgtmp; });
 
-// const body = d3.select("body");
-// var trs = body.select("table").select("tbody").selectAll("tr").data(matrix);
-// trs.selectAll("td").data((d) => { return d; }).text((d) => { return d; });
-
-// var td = trs.enter().append("tr").selectAll("td").data((d, i) => {
-//     console.log(`d: ${d}`);
-//     console.log(`i: ${i}`);
-//     return d;
-// }).enter().append("td").text((d) => {
-//     console.log(`d: ${d}`);
-//     return d;
-// });
+let x_axis = canvas.append("g").call(d3.axisBottom(x_scale).tickFormat(d3.timeFormat("%d/%m"))).attr("transform", `translate(0, ${canvas.attr("height") - margin})`);
+let y_axis = canvas.append("g").call(d3.axisLeft(y_scale)).attr("transform", `translate(${margin}, 0)`);
