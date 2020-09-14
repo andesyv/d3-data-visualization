@@ -6,7 +6,8 @@
   "scripts": {
     "start": "watchify -t brfs js/main.js -o js/bundle.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "compile": "browserify -t brfs js/main.js > js/bundle.js"
+    "compile": "browserify -t brfs js/main.js > js/bundle.js",
+    "format": "prettier --write **/*.{js,html}"
   },
   "author": "andesyv",
   "license": "ISC",
@@ -17,5 +18,8 @@
     "d3-axis": "^2.0.0",
     "d3-dsv": "^2.0.0",
     "watchify": "^3.11.1"
+  },
+  "devDependencies": {
+    "prettier": "^2.1.1"
   }
 }
