@@ -69,19 +69,29 @@ let y_axis = canvas.append("g").call(d3.axisLeft(y_scale)).attr("transform", `tr
 
 
 // Chart 2
-let series = [dataset];
+let series = Array();
+["mintmp", "avgtmp", "maxtmp"].forEach((p) => {
+    series.push(dataset.map((d) => { return { date: d.date, value: d[p]}; }));
+});
+console.log(series);
 
 canvas = d3.select("body").append("svg").attr("width", 600).attr("height", 500);
 x_scale = d3.scaleBand().domain(dataset.map(d => d.date)).range([margin, 500]);
-y_scale = d3.scaleLinear().domain([d3.min(dataset, d => d.mintmp), d3.max(dataset, d => d.mintmp)]).range([450, margin]); // Reversing range (up on y-axis means larger)
+// Create a new band scale with the same output range of x_scale but the domain of the indexes in the series
+let x_index_scale = d3.scaleBand().domain(series.map((v, i) => i)).range(x_scale.range());
+let color_scale = d3.scaleOrdinal().domain(series.map((v, i) => i)).range(d3.schemeCategory10);
+y_scale = d3.scaleLinear().domain([d3.min(dataset, d => d.mintmp), d3.max(dataset, d => d.maxtmp)]).range([450, margin]); // Reversing range (up on y-axis means larger)
 
 x_axis = canvas.append("g").call(d3.axisBottom(x_scale).tickFormat(d3.timeFormat("%d/%m"))).attr("transform", `translate(0, ${canvas.attr("height") - margin})`);
 y_axis = canvas.append("g").call(d3.axisLeft(y_scale)).attr("transform", `translate(${margin}, 0)`);
 
+// let area = d3.area().x((d, i) => {
 let area = d3.line().x((d) => {
     return x_scale(d.date);
 }).y((d) => {
-    return y_scale(d.mintmp);
+    return y_scale(d.value);
 });
 
-let path = canvas.append("path").data(series).attr("fill", "none").attr("stroke", "steelblue").attr("stroke-width", 1.5).attr("d", area);
+let path = canvas.selectAll().data(series).join("path").attr("fill", /*({key}) => color_scale(key)*/"none").attr("stroke", (d, i) => {
+    return color_scale(i);
+}).attr("stroke-width", 1.5).attr("d", area);
