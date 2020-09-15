@@ -4,6 +4,7 @@ const valueCount = 10,
   margin = 30;
 
 export default (dataset) => {
+  dataset = dataset.slice(0, 10);
   let series = d3
     .stack()
     .keys(["mintmp", "avgtmp", "maxtmp"])

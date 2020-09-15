@@ -4,6 +4,7 @@ const valueCount = 10,
   margin = 30;
 
 export default (dataset) => {
+  dataset = dataset.slice(0, 10);
   var canvas = d3
     .select("body")
     .append("svg")

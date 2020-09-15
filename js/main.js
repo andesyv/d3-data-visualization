@@ -17,16 +17,11 @@ function convertToDate(str) {
   return new Date(str);
 }
 
-const valueCount = 10,
-  width = 600,
-  height = 500,
-  margin = 30;
-
 // Parse string into d3 object
 d3.csv(
   "https://raw.githubusercontent.com/andesyv/d3-data-visualization/master/YR-weather-data-Bergen-last-12-years_formatted.csv",
-  (d, i) => {
-    if (d.date && i < valueCount) {
+  (d) => {
+    if (d.date) {
       for (let property in d) {
         d[property] = cleanseVal(d[property]);
       }
