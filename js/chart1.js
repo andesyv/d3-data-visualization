@@ -4,7 +4,7 @@ const valueCount = 10,
   margin = 30;
 
 export default (dataset) => {
-  dataset = dataset.slice(0, 10);
+  dataset = dataset.slice(0, 10).reverse();
   var canvas = d3
     .select("body")
     .append("svg")
@@ -18,8 +18,8 @@ export default (dataset) => {
   let y_scale = d3
     .scaleLinear()
     .domain([
-      d3.min(dataset, (d) => d.avgtmp),
       d3.max(dataset, (d) => d.avgtmp),
+      d3.min(dataset, (d) => d.avgtmp),
     ])
     .range([margin, 450]);
 
