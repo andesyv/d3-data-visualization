@@ -11,7 +11,7 @@
             "url": "http://localhost:8080",
             "webRoot": "${workspaceFolder}",
             "runtimeArgs": [
-                "--disk-cache-size=1"
+                "--disk-cache-size=null"
             ]
         }
     ]
