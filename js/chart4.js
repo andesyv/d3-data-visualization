@@ -1,10 +1,11 @@
-// Source: https://observablehq.com/@d3/sunburst
+/** Zoomable sunburst graph
+ * Sources:
+ * https://observablehq.com/@d3/sunburst
+ * https://observablehq.com/@d3/zoomable-sunburst
+ */
 
-const valueCount = 10,
-  width = 600,
-  height = 600,
-  margin = 30,
-  radius = width / 2;
+const radius = 600,
+  innerRadius = radius / 6;
 
 const monthNames = [
   "January",
@@ -23,7 +24,6 @@ const monthNames = [
 
 function constructDataset(dataset) {
   const yearRange = d3.extent(dataset, (d) => d.year);
-  console.log(`Year range: [${yearRange[0]}, ${yearRange[1]}]`);
   let data = {
     name: "root",
     children: Array(yearRange[1] - yearRange[0] + 1),
@@ -38,19 +38,17 @@ function constructDataset(dataset) {
     for (let m = 0; m < 12; ++m) {
       // Maximum 31 days a month
       data.children[y].children[m] = {
-        name: monthNames[m]
+        name: monthNames[m],
       };
     }
   }
 
-  console.log(`Dataset includes ${data.children.length} years`);
   dataset.forEach((d, i) => {
     if (
       !(Number.isNaN(d.year) || Number.isNaN(d.month) || Number.isNaN(d.day))
     ) {
       let node = data.children[d.year - yearRange[0]].children[d.month - 1];
-      if (typeof node.children === 'undefined')
-        node.children = Array();
+      if (typeof node.children === "undefined") node.children = Array();
 
       node.children.push({
         name: d.day,
@@ -59,90 +57,158 @@ function constructDataset(dataset) {
     }
   });
 
-  console.log(data);
-
   return data;
 }
 
-export default (dataset) => {
-  // dataset = dataset.slice(0, 10);
+function arcVisible(d) {
+  return d.y1 <= 3 && d.y0 >= 1 && d.x1 > d.x0;
+}
 
+function labelVisible(d) {
+  return d.y1 <= 3 && d.y0 >= 1 && (d.y1 - d.y0) * (d.x1 - d.x0) > 0.03;
+}
+
+function labelTransform(d) {
+  const x = (((d.x0 + d.x1) / 2) * 180) / Math.PI;
+  const y = ((d.y0 + d.y1) / 2) * innerRadius;
+  return `rotate(${x - 90}) translate(${y},0) rotate(${x < 180 ? 0 : 180})`;
+}
+
+export default (dataset) => {
   // Format data into hiererchical format
   const data = constructDataset(dataset);
 
-  // let root = Array.from(d3.group(dataset, d => d.year, d => d.month), ([key, children]) => ({key, children}));
-
-  // console.log(root);
-
-  const partition = d3.partition().size([2 * Math.PI, radius])(
-    d3.hierarchy(data)
-    .sum((d) => {
-      return d.value;
-    })
+  const partition = (data) => {
+    const root = d3.hierarchy(data).sum((d) => d.value);
     // .sort((a, b) => b.value - a.value)
-  );
 
-  console.log(partition);
+    return d3.partition().size([2 * Math.PI, root.height + 1])(root);
+  };
+  let root = partition(data);
+
+  root.each((d) => (d.current = d));
+
+  const canvas = d3
+    .select("body")
+    .append("svg")
+    .attr("width", radius)
+    .attr("height", radius);
+
+  const g = canvas
+    .append("g")
+    .attr("transform", `translate(${radius / 2}, ${radius / 2})`);
+
+  let color_scale = d3.scaleOrdinal(
+    d3.quantize(d3.interpolateRainbow, data.children.length + 1)
+  );
 
   let arc = d3
     .arc()
     .startAngle((d) => d.x0)
     .endAngle((d) => d.x1)
     .padAngle((d) => Math.min((d.x1 - d.x0) / 2, 0.005))
-    .padRadius(radius / 2)
-    .innerRadius((d) => d.y0)
-    .outerRadius((d) => d.y1 - 1);
+    .padRadius(innerRadius * 1.5)
+    .innerRadius((d) => d.y0 * innerRadius)
+    .outerRadius((d) => Math.max(d.y0 * innerRadius, d.y1 * innerRadius - 1));
 
-  let canvas = d3
-    .select("body")
-    .append("svg")
-    .attr("width", width)
-    .attr("height", height);
-
-  let color_scale = d3.scaleOrdinal(
+  const color = d3.scaleOrdinal(
     d3.quantize(d3.interpolateRainbow, data.children.length + 1)
   );
 
-  canvas
+  const path = g
     .append("g")
-    .attr("transform", `translate(${width / 2}, ${height / 2})`)
     .selectAll("path")
-    .data(partition.descendants().filter((d) => d.depth))
+    .data(root.descendants().slice(1))
     .join("path")
     .attr("fill", (d) => {
       while (d.depth > 1) d = d.parent;
-      return color_scale(d.data.name);
+      return color(d.data.name);
     })
-    .attr("d", arc)
-    .append("title")
-    .text(
-      (d) =>
-        `${d
-          .ancestors()
-          .map((d) => d.data.name)
-          .reverse()
-          .join("/")}\n${d3.format(",d")(d.value)}`
-    );
+    .attr("fill-opacity", (d) =>
+      arcVisible(d.current) ? (d.children ? 0.6 : 0.4) : 0
+    )
+    .attr("d", (d) => arc(d.current));
 
-  canvas
+  path
+    .filter((d) => d.children)
+    .style("cursor", "pointer")
+    .on("click", clicked);
+
+  const format = d3.format(",d");
+
+  path.append("title").text(
+    (d) =>
+      `${d
+        .ancestors()
+        .map((d) => d.data.name)
+        .reverse()
+        .join("/")}\n${format(d.value)}`
+  );
+
+  const label = g
     .append("g")
-    .attr("transform", `translate(${width / 2}, ${height / 2})`)
     .attr("pointer-events", "none")
     .attr("text-anchor", "middle")
-    .attr("font-size", 10)
-    .attr("font-family", "sans-serif")
+    .style("user-select", "none")
     .selectAll("text")
-    .data(
-      partition
-        .descendants()
-        .filter((d) => d.depth && ((d.y0 + d.y1) / 2) * (d.x1 - d.x0) > 10)
-    )
+    .data(root.descendants().slice(1))
     .join("text")
-    .attr("transform", function (d) {
-      const x = (((d.x0 + d.x1) / 2) * 180) / Math.PI;
-      const y = (d.y0 + d.y1) / 2;
-      return `rotate(${x - 90}) translate(${y},0) rotate(${x < 180 ? 0 : 180})`;
-    })
     .attr("dy", "0.35em")
+    .attr("fill-opacity", (d) => +labelVisible(d.current))
+    .attr("transform", (d) => labelTransform(d.current))
     .text((d) => d.data.name);
+
+  const parent = g
+    .append("circle")
+    .datum(root)
+    .attr("r", innerRadius)
+    .attr("fill", "none")
+    .attr("pointer-events", "all")
+    .on("click", clicked);
+
+  function clicked(event) {
+    parent.datum(event.parent || root);
+
+    root.each((d) => {
+      d.target = {
+        x0:
+          Math.max(0, Math.min(1, (d.x0 - event.x0) / (event.x1 - event.x0))) *
+          2 *
+          Math.PI,
+        x1:
+          Math.max(0, Math.min(1, (d.x1 - event.x0) / (event.x1 - event.x0))) *
+          2 *
+          Math.PI,
+        y0: Math.max(0, d.y0 - event.depth),
+        y1: Math.max(0, d.y1 - event.depth),
+      };
+    });
+
+    const t = g.transition().duration(750);
+
+    // Transition the data on all arcs, even the ones that aren’t visible,
+    // so that if this transition is interrupted, entering arcs will start
+    // the next transition from the desired position.
+    path
+      .transition(t)
+      .tween("data", (d) => {
+        const i = d3.interpolate(d.current, d.target);
+        return (t) => (d.current = i(t));
+      })
+      .filter(function (d) {
+        return +this.getAttribute("fill-opacity") || arcVisible(d.target);
+      })
+      .attr("fill-opacity", (d) =>
+        arcVisible(d.target) ? (d.children ? 0.6 : 0.4) : 0
+      )
+      .attrTween("d", (d) => () => arc(d.current));
+
+    label
+      .filter(function (d) {
+        return +this.getAttribute("fill-opacity") || labelVisible(d.target);
+      })
+      .transition(t)
+      .attr("fill-opacity", (d) => +labelVisible(d.target))
+      .attrTween("transform", (d) => () => labelTransform(d.current));
+  }
 };
