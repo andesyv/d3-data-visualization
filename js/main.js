@@ -2,6 +2,7 @@ import chart1 from "./chart1.js";
 import chart2 from "./chart2.js";
 import chart3 from './chart3.js';
 import chart4 from './chart4.js';
+import chart5 from './chart5.js';
 
 function cleanseVal(val) {
   return val == "---" ? null : val;
@@ -64,6 +65,11 @@ d3.csv(
       chart4(dataset);
     } catch (err) {
       console.log(`Error chart4: ${err}`);
+    }
+    try {
+      chart5(dataset);
+    } catch (err) {
+      console.log(`Error chart5: ${err}`);
     }
   })
   .catch((err) => {
