@@ -1,7 +1,7 @@
 const valueCount = 10,
   width = 600,
   height = 500,
-  margin = 30;
+  margin = 40;
 
 function removeYear(date) {
   return d3.timeParse("%B %d, %Y")(
@@ -14,31 +14,34 @@ function avgReduction(acc, val, index) {
 }
 
 export default (dataset) => {
-  // dataset = dataset.slice(0, 10);
   const data = d3
     .groups(
-      dataset.filter((dinner) => dinner.date && dinner.precip),
+      dataset.filter((dinner) => dinner.precip),
       (d) => d.year
     )
     .sort((l, r) => {
-      return l[0] < r[0];
+      return l[0] - r[0];
     })
-    .map((d) => d[1])
-    .map((y) => {
-      let months = [];
-      return Array(12)
-        .fill(null)
-        .map((v, i) => {
-          let arr = y.filter((d) => d.month === i + 1);
-          return arr.length
-            ? arr
-                .map((d) => d.precip)
-                .reduce((acc, val, index) => (index ? acc + val : acc))
-            : null;
-        });
-    });
+    .map((d) => d[1]);
 
-  console.log(data);
+  data.forEach((d) => {
+    d.sort((l, r) => l.date - r.date);
+  });
+
+  const avgRain = data.map((y) => {
+    return Array(12)
+      .fill(null)
+      .map((v, i) => {
+        let arr = y.filter((d) => d.month === i + 1);
+        return arr.length
+          ? arr
+              .map((d) => d.precip)
+              .reduce((acc, val, index) => (index ? acc + val : acc))
+          : null;
+      });
+  });
+
+  const yearRange = d3.extent(dataset, (d) => d.year);
 
   let canvas = d3
     .select("body")
@@ -46,16 +49,16 @@ export default (dataset) => {
     .attr("width", 600)
     .attr("height", 500);
 
-  let x_scale = d3.scaleLinear().domain([0, 11]).range([margin, 500]);
+  let x_scale = d3.scaleLinear().domain([0, 11]).range([margin, width - margin]);
 
   let color_scale = d3
     .scaleOrdinal()
-    .domain(data.map((d, i) => i))
+    .domain(avgRain.map((d, i) => i))
     .range(d3.schemeCategory10);
 
   let y_scale = d3
     .scaleLinear()
-    .domain([0, d3.max(data.map((dinner) => d3.max(dinner)))])
+    .domain([0, d3.max(avgRain.map((dinner) => d3.max(dinner)))])
     .range([450, margin]); // Reversing range (up on y-axis means larger)
 
   let x_axis = canvas
@@ -70,15 +73,47 @@ export default (dataset) => {
 
   let line = d3
     .line()
-    .x((d, i) => x_scale(i))
-    .y((d) => y_scale(d));
+    .y((d) => y_scale(d))
+    .defined((d) => d !== null)
+    .x((d, i) => x_scale(i));
 
   let path = canvas
     .selectAll()
-    .data(data)
+    .data(avgRain)
     .join("path")
     .attr("fill", "none")
     .attr("stroke", (d, i) => color_scale(i))
-    .attr("stroke-width", 1.5)
-    .attr("d", line);
+    .attr("stroke-width", 2)
+    .attr("d", line)
+    .on("mouseenter", hover)
+    .on("mouseleave", hoveroff);
+
+  let labels = canvas
+    .selectAll()
+    .data(avgRain)
+    .enter()
+    .append("text")
+    .attr("transform", (d, i) => {
+      let lastIndex = d.map((d) => d !== null).lastIndexOf(true);
+      return `translate(${x_scale(lastIndex)}, ${y_scale(d[lastIndex])})`;
+    })
+    .attr("style", "font: 14px sans-serif")
+    .attr("fill", (d, i) => `${color_scale(i)}`)
+    .text((d, i) => `${yearRange[0] + i}`)
+    .on("mouseenter", hover)
+    .on("mouseleave", hoveroff);
+
+  function hover(event, p) {
+    path
+      .attr("stroke-width", (d, i) => (i === p ? 4 : 2))
+      .attr("stroke-opacity", (d, i) => (i === p ? 1 : 0.3));
+    labels
+      // .attr("stroke-width", (d, i) => (i === p) ? 4 : 2)
+      .attr("fill-opacity", (d, i) => (i === p ? 1 : 0.3));
+  }
+
+  function hoveroff() {
+    path.attr("stroke-width", 2).attr("stroke-opacity", 1);
+    labels.attr("fill-opacity", 1);
+  }
 };
