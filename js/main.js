@@ -19,12 +19,28 @@ function convertToDate(str) {
   return new Date(str);
 }
 
+var index = 0;
+function genIndex() {
+  index++;
+  return `chart${index}`;
+}
+
 function wrap(str, e) {
   const container = document.createElement("div");
+  container.id = genIndex();
   container.textContent = str;
   container.appendChild(document.createElement("br"));
   container.appendChild(e);
-  document.body.appendChild(container);
+  return document.body.appendChild(container);
+}
+
+export function update(str, e, i) {
+  const container = document.getElementById(`chart${i}`);
+  let element = container.childNodes[0];
+  if (element) {
+    container.childNodes[0].textContent = str;
+    container.replaceChild(e, container.childNodes[2]);
+  }
 }
 
 // Parse string into d3 object
@@ -56,7 +72,18 @@ d3.csv(
   .then((dataset) => {
     chart1(dataset).then(e => wrap("Example graph of something... ", e)).catch(err => console.log(err));
     let dayCount = 100;
-    chart2(dataset, dayCount).then(e => wrap(`Min, avg and max temp comparison over a set of ${dayCount} days: `, e)).catch(err => console.log(err));
+    let c2 = chart2(dataset, dayCount).then(e => wrap(`Min, avg and max temp comparison over a set of ${dayCount} days: `, e)).catch(err => console.log(err));
+    let slider = document.createElement("form");
+    let input = slider.appendChild(document.createElement("input"));
+      input.setAttribute("type", "range");
+      input.setAttribute("min", 0);
+      input.setAttribute("max", 230);
+      input.setAttribute("style", "width: 300px");
+      input.oninput = (event) => {
+        const c = event.target.value;
+        chart2(dataset, c).then(e => update(`Min, avg and max temp comparison over a set of ${c} days: `, e, 2)).catch(err => console.log(err));
+      };
+    c2.then((e) => e.appendChild(slider));
     chart3(dataset).then(e => wrap("Min, avg and max temp for full dataset in incrementing sets of 10s", e)).catch(err => console.log(err));
     chart4(dataset).then(e => wrap("Snow amount comparison over years (Click on elements to focus)", e)).catch(err => console.log(err));
     chart5(dataset).then(e => wrap("Total rain amount per month, separated by year. (Hover over to scope to year)", e)).catch(err => console.log(err));
