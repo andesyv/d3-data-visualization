@@ -1,8 +1,8 @@
 import chart1 from "./chart1.js";
 import chart2 from "./chart2.js";
-import chart3 from './chart3.js';
-import chart4 from './chart4.js';
-import chart5 from './chart5.js';
+import chart3 from "./chart3.js";
+import chart4 from "./chart4.js";
+import chart5 from "./chart5.js";
 
 function cleanseVal(val) {
   return val == "---" ? null : val;
@@ -17,6 +17,14 @@ function convertToDate(str) {
   str = parts.join("-");
 
   return new Date(str);
+}
+
+function wrap(str, e) {
+  const container = document.createElement("div");
+  container.textContent = str;
+  container.appendChild(document.createElement("br"));
+  container.appendChild(e);
+  document.body.appendChild(container);
 }
 
 // Parse string into d3 object
@@ -46,31 +54,12 @@ d3.csv(
   }
 )
   .then((dataset) => {
-    try {
-      chart1(dataset);
-    } catch (err) {
-      console.log(`Error chart1: ${err}`);
-    }
-    try {
-      chart2(dataset);
-    } catch (err) {
-      console.log(`Error chart2: ${err}`);
-    }
-    try {
-      chart3(dataset);
-    } catch (err) {
-      console.log(`Error chart3: ${err}`);
-    }
-    try {
-      chart4(dataset);
-    } catch (err) {
-      console.log(`Error chart4: ${err}`);
-    }
-    try {
-      chart5(dataset);
-    } catch (err) {
-      console.log(`Error chart5: ${err}`);
-    }
+    chart1(dataset).then(e => wrap("Example graph of something... ", e)).catch(err => console.log(err));
+    let dayCount = 100;
+    chart2(dataset, dayCount).then(e => wrap(`Min, avg and max temp comparison over a set of ${dayCount} days: `, e)).catch(err => console.log(err));
+    chart3(dataset).then(e => wrap("Min, avg and max temp for full dataset in incrementing sets of 10s", e)).catch(err => console.log(err));
+    chart4(dataset).then(e => wrap("Snow amount comparison over years (Click on elements to focus)", e)).catch(err => console.log(err));
+    chart5(dataset).then(e => wrap("Total rain amount per month, separated by year. (Hover over to scope to year)", e)).catch(err => console.log(err));
   })
   .catch((err) => {
     console.log(`Failed to load data: ${err}`);
